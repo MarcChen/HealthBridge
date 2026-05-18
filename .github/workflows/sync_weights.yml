@@ -1,0 +1,65 @@
+name: Garmin Weight Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      poids:
+        description: "Newline-separated list of weight values (e.g. 74.5\n74.0)"
+        required: true
+        type: string
+      date:
+        description: "Newline-separated list of ISO date strings (e.g. 2025-12-06\n2025-12-13)"
+        required: true
+        type: string
+  repository_dispatch:
+    types:
+      - sync-weights
+
+jobs:
+  sync:
+    name: Sync Weight Data
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Prepare Payload Environment Variable
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Construct JSON from manual workflow dispatch inputs
+            # Using jq to ensure properly escaped JSON
+            PAYLOAD=$(jq -n \
+              --arg poids "${{ github.event.inputs.poids }}" \
+              --arg date "${{ github.event.inputs.date }}" \
+              '{poids: $poids, date: $date}')
+            echo "PAYLOAD_JSON=$PAYLOAD" >> $GITHUB_ENV
+          elif [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            # Read JSON directly from repository dispatch client payload
+            PAYLOAD='${{ toJson(github.event.client_payload) }}'
+            echo "PAYLOAD_JSON=$PAYLOAD" >> $GITHUB_ENV
+          fi
+
+      - name: Run Delta Weight Sync
+        env:
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          GARMIN_IS_CN: ${{ secrets.GARMIN_IS_CN || 'False' }}
+          PAYLOAD_JSON: ${{ env.PAYLOAD_JSON }}
+        run: |
+          uv run python main.py
