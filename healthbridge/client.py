@@ -41,7 +41,12 @@ class GarminClient:
                 "(GARMIN_EMAIL/GARMIN_PASSWORD) in your environment or .env file."
             )
 
-        token_path = Path(self.settings.garmin_token_path).resolve()
+        token_path_str = str(self.settings.garmin_token_path)
+        if not token_path_str.endswith(".json"):
+            token_path = Path(self.settings.garmin_token_path) / "garmin_tokens.json"
+        else:
+            token_path = Path(self.settings.garmin_token_path)
+        token_path = token_path.resolve()
         token_path.parent.mkdir(parents=True, exist_ok=True)
 
         if self.settings.has_token:

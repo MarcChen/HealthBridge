@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     )
 
     garmin_token_path: Path = Field(
-        default=Path(".garminconnect"),
-        description="Directory path where tokens are stored to persist sessions.",
+        default=Path(".garminconnect/garmin_tokens.json"),
+        description="File path where tokens are stored to persist sessions.",
         validation_alias="GARMIN_TOKEN_PATH",
     )
 
