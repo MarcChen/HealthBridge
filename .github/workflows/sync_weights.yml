@@ -44,15 +44,19 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             # Construct JSON from manual workflow dispatch inputs
             # Using jq to ensure properly escaped JSON
-            PAYLOAD=$(jq -n \
+            PAYLOAD=$(jq -cn \
               --arg poids "${{ github.event.inputs.poids }}" \
               --arg date "${{ github.event.inputs.date }}" \
               '{poids: $poids, date: $date}')
-            echo "PAYLOAD_JSON=$PAYLOAD" >> $GITHUB_ENV
+            echo "PAYLOAD_JSON<<EOF" >> $GITHUB_ENV
+            echo "$PAYLOAD" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
           elif [ "${{ github.event_name }}" = "repository_dispatch" ]; then
             # Read JSON directly from repository dispatch client payload
             PAYLOAD='${{ toJson(github.event.client_payload) }}'
-            echo "PAYLOAD_JSON=$PAYLOAD" >> $GITHUB_ENV
+            echo "PAYLOAD_JSON<<EOF" >> $GITHUB_ENV
+            echo "$PAYLOAD" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
           fi
 
       - name: Run Delta Weight Sync
