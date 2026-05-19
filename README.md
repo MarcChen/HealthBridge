@@ -159,6 +159,85 @@ curl -L \
 
 ---
 
+
+## 📲 Apple Health & iOS Shortcuts Automation
+
+You can fully automate syncing your weight from Apple Health to Garmin Connect by setting up a workflow in the iOS Shortcuts app on your iPhone. This Shortcut fetches your weight logs from the Apple Health database, formats them, and triggers a Repository Dispatch webhook on GitHub to run the sync workflow.
+
+### 1. Prerequisites
+
+1. **GitHub Personal Access Token (PAT)**:
+   - Create a Classic PAT on GitHub with `repo` scope (to trigger repository dispatch events).
+   - Save this token securely; you will use it as a Bearer token in the Shortcuts app.
+
+2. **Apple Health Permissions**:
+   - Ensure the Shortcuts app is allowed to read "Weight" from Apple Health.
+
+---
+
+### 2. How to Build the iOS Shortcut
+
+Open the **Shortcuts** app on your iPhone and create a new Shortcut with the following actions:
+
+#### Step A: Fetch Weight Logs
+1. Add the **Find Health Samples** action.
+2. Set it to find **Health Samples** where:
+   - Type is **Weight**
+   - Start Date is **In the Last 4 Weeks** (or any duration $X$ you prefer)
+3. Set **Sort by** to **Start Date** and **Order** to **Oldest First**.
+4. Set **Limit** to **No Limit** (or a specific number, e.g., 30).
+
+#### Step B: Format the Payload
+Because the Garmin sync CLI takes newline-separated weights and dates, we format the health samples into two separate lists:
+
+1. **Dates List**:
+   - Add a **Repeat with Each** loop. Input: the results of the Health Samples.
+   - Inside the loop, add a **Format Date** action. Select `Repeat Item` and set the Date Format to **ISO 8601** (or Custom: `yyyy-MM-dd`), and Time Format to **None**.
+   - Add a **Text** action containing the formatted date.
+   - End Repeat.
+   - Add a **Combine Text** action. Set it to combine the `Repeat Results` using **New Lines**. Save this output as a variable named `date_payload`.
+
+2. **Weights List**:
+   - Add a second **Repeat with Each** loop. Input: the Health Samples.
+   - Inside the loop, add a **Get Value from Health Sample** action. Set it to get the **Value** from `Repeat Item`.
+   - Add a **Text** action containing the weight value (ensure it is formatted in your preferred units, e.g., kg).
+   - End Repeat.
+   - Add a **Combine Text** action. Set it to combine the `Repeat Results` using **New Lines**. Save this output as a variable named `poids_payload`.
+
+#### Step C: Build the JSON Webhook Payload
+1. Add a **Dictionary** action. Populate it with the following structure:
+   - Key: `event_type` -> Value: `sync-weights`
+   - Key: `client_payload` -> Value (type Dictionary):
+     - Key: `poids` -> Value: `poids_payload` (the combine text output)
+     - Key: `date` -> Value: `date_payload` (the combine text output)
+
+#### Step D: Send the HTTP Request
+1. Add a **Get Contents of URL** action. Set the URL to your repository's dispatch endpoint:
+   ```
+   https://api.github.com/repos/<YOUR_GITHUB_USERNAME>/<YOUR_REPOSITORY_NAME>/dispatches
+   ```
+2. Click **Show More** to configure the request settings:
+   - Method: **POST**
+   - Headers:
+     - `Accept`: `application/vnd.github+json`
+     - `Authorization`: `Bearer <YOUR_GITHUB_PERSONAL_ACCESS_TOKEN>`
+     - `X-GitHub-Api-Version`: `2022-11-28`
+   - Request Body: **JSON**
+   - Request Body content: Select the **Dictionary** built in Step C.
+
+---
+
+### 3. Automated Scheduling on iOS
+
+To run this completely hands-free:
+1. Go to the **Automation** tab in the iOS Shortcuts app.
+2. Create a **Personal Automation** (click the `+` icon).
+3. Select the trigger (e.g., **Time of Day** -> Daily, Weekly, or Monthly).
+4. Set it to **Run Immediately** (disable "Ask Before Running" for full automation).
+5. Choose **Run Shortcut** and select the weight sync Shortcut you created.
+
+Now, whenever the automation fires, your iPhone will securely query Apple Health, package the data, and trigger the GitHub Action to synchronize the new weigh-ins to Garmin Connect!
+
 ## 🧪 Testing
 
 The repository uses **`pytest`** to execute a comprehensive unit test suite:
