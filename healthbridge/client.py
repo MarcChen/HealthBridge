@@ -137,7 +137,16 @@ class GarminClient:
 
             # Normalize weight: if raw > 1000 (in grams), convert to kg
             weight_kg = weight_raw / 1000.0 if weight_raw > 1000.0 else weight_raw
-            date_str = entry.get("date")
+            # Garmin API returns calendarDate as YYYY-MM-DD,
+            # while date is a timestamp
+            date_str = entry.get("calendarDate") or entry.get("date")
+            if isinstance(date_str, int):
+                from datetime import datetime
+
+                date_str = datetime.utcfromtimestamp(date_str / 1000.0).strftime(
+                    "%Y-%m-%d"
+                )
+
             if not date_str:
                 continue
 
