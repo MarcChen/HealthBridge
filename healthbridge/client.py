@@ -32,42 +32,45 @@ class GarminClient:
     def login(self) -> None:
         """Authenticate with Garmin Connect.
 
-        Loads the session token from configuration.
+        Loads the session token from configuration. Fallback to credentials if provided.
         """
-        if not self.settings.has_token:
+        if not self.settings.has_auth:
             raise ValueError(
-                "Garmin Connect token is not configured. "
-                "Please run 'python scripts/get_garmin_token.py' to generate a token, "
-                "and configure GARMIN_TOKEN in your .env file."
+                "Neither Garmin Connect token nor credentials are configured. "
+                "Please configure GARMIN_TOKEN or credentials "
+                "(GARMIN_EMAIL/GARMIN_PASSWORD) in your environment or .env file."
             )
-
-        token_raw = self.settings.garmin_token.get_secret_value()
-        try:
-            import json
-
-            token_dict = json.loads(token_raw)
-            logger.info(f"Loaded token format keys: {list(token_dict.keys())}")
-        except Exception as e:
-            logger.error(f"Loaded token is not a valid JSON structure: {e}")
 
         token_path = Path(self.settings.garmin_token_path).resolve()
         token_path.parent.mkdir(parents=True, exist_ok=True)
-        token_path.write_text(
-            token_raw,
-            encoding="utf-8",
-        )
 
-        # Initialize the underlying client with empty credentials
+        if self.settings.has_token:
+            token_raw = self.settings.garmin_token.get_secret_value()
+            try:
+                import json
+
+                token_dict = json.loads(token_raw)
+                logger.info(f"Loaded token format keys: {list(token_dict.keys())}")
+            except Exception as e:
+                logger.error(f"Loaded token is not a valid JSON structure: {e}")
+
+            token_path.write_text(
+                token_raw,
+                encoding="utf-8",
+            )
+
+        # Initialize the underlying client with settings credentials
         self._client = Garmin(
-            email="",
-            password="",
+            email=self.settings.email_or_username,
+            password=self.settings.password_str,
             is_cn=self.settings.garmin_is_cn,
         )
 
         try:
-            logger.info("Logging in and loading tokens...")
+            logger.info("Logging in...")
             # We call login passing the tokenstore path as a positional argument.
-            # garminconnect will handle loading from this path.
+            # garminconnect will handle loading from this path. If it fails/expires
+            # it will log in using credentials and save new tokens to token_path.
             self._client.login(str(token_path))
             logger.info("Garmin Connect login successful.")
         except Exception as e:

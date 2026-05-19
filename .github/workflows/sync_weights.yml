@@ -62,6 +62,9 @@ jobs:
       - name: Run Delta Weight Sync
         env:
           GARMIN_TOKEN: ${{ secrets.GARMIN_TOKEN }}
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
           GARMIN_IS_CN: ${{ secrets.GARMIN_IS_CN || 'False' }}
           PAYLOAD_JSON: ${{ env.PAYLOAD_JSON }}
         run: |

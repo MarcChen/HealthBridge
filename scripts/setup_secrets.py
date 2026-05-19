@@ -44,7 +44,13 @@ def check_gh_cli():
 def load_env_secrets(env_path: Path) -> dict[str, str]:
     """Parse the .env file to extract target secrets."""
     secrets = {}
-    target_keys = {"GARMIN_TOKEN", "GARMIN_IS_CN"}
+    target_keys = {
+        "GARMIN_TOKEN",
+        "GARMIN_IS_CN",
+        "GARMIN_EMAIL",
+        "GARMIN_USERNAME",
+        "GARMIN_PASSWORD",
+    }
 
     print(f"[*] Reading secrets from {env_path}...")
     with open(env_path, encoding="utf-8") as f:
@@ -71,9 +77,17 @@ def load_env_secrets(env_path: Path) -> dict[str, str]:
 
 def upload_secrets(secrets: dict[str, str]):
     """Upload extracted secrets to GitHub repository secrets using 'gh secret set'."""
-    if not secrets:
-        print("[-] No matching token found in the .env file.")
-        print("    Required variables: GARMIN_TOKEN")
+    has_token = "GARMIN_TOKEN" in secrets
+    has_creds = (
+        "GARMIN_EMAIL" in secrets or "GARMIN_USERNAME" in secrets
+    ) and "GARMIN_PASSWORD" in secrets
+
+    if not (has_token or has_creds):
+        print("[-] No valid authentication configuration found in the .env file.")
+        print(
+            "    Please configure either GARMIN_TOKEN, or both Garmin "
+            "credentials (email/username and password)."
+        )
         sys.exit(1)
 
     print(f"[*] Found {len(secrets)} secrets to upload.")

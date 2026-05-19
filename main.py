@@ -139,14 +139,17 @@ def main():
             logger.error(f"  {loc}: {err['msg']} (input: {err.get('input')})")
         sys.exit(1)
 
-    # 2. Check if token exists
-    if not settings.has_token:
-        print("\n[!] Garmin Connect token is not configured!")
-        print("Please perform the following steps:")
-        print(" 1. Run the token retriever script to log in and get your token:")
+    # 2. Check if authentication is configured
+    if not settings.has_auth:
+        print("\n[!] Garmin Connect authentication is not configured!")
+        print("Please perform one of the following steps:")
+        print(
+            " - Configure GARMIN_EMAIL and GARMIN_PASSWORD in your "
+            "'.env' file or environment."
+        )
+        print(" - Run the token retriever script to log in and get your token:")
         print("    PYTHONPATH=. uv run python scripts/get_garmin_token.py")
-        print(" 2. Save the token as GARMIN_TOKEN in your '.env' file or environment")
-        print(" 3. Re-run this application\n")
+        print("    And configure GARMIN_TOKEN in your '.env' file or environment.\n")
         sys.exit(0)
 
     # 3. Parse inputs to find weight payload
