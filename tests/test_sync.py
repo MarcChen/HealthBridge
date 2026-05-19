@@ -63,8 +63,8 @@ class TestGarminClientSync(unittest.TestCase):
 
     def setUp(self):
         self.settings = Settings(
-            garmin_email="test@example.com",
-            garmin_password="secure_password",
+            garmin_token='{"dummy": "token"}',
+            garmin_token_path=".garminconnect/dummy_tokens.json",
         )
         self.client = GarminClient(settings=self.settings)
 
@@ -130,6 +130,47 @@ class TestGarminClientSync(unittest.TestCase):
             timestamp="2025-12-17T08:00:00",
             weight=72.7,
         )
+
+    @patch("healthbridge.client.Garmin")
+    @patch("healthbridge.client.Path")
+    def test_login_with_token(self, mock_path_class, mock_garmin_class):
+        # Create settings with a token instead of credentials
+        token_json = (
+            '{"oauth_token": "dummy_oauth_token", '
+            '"oauth_token_secret": "dummy_secret"}'
+        )
+        settings = Settings(
+            garmin_token=token_json,
+            garmin_token_path=".garminconnect/dummy_tokens.json",
+        )
+        client = GarminClient(settings=settings)
+
+        # Mock the underlying Garmin client's login
+        mock_garmin_instance = MagicMock()
+        mock_garmin_class.return_value = mock_garmin_instance
+
+        # Mock Path instance and resolved path
+        mock_path_instance = MagicMock()
+        mock_path_class.return_value = mock_path_instance
+        mock_resolved_path = MagicMock()
+        mock_path_instance.resolve.return_value = mock_resolved_path
+
+        # Call login
+        client.login()
+
+        # Verify Path was instantiated with the correct path
+        mock_path_class.assert_called_with(settings.garmin_token_path)
+
+        # Verify token was written to the resolved path
+        mock_resolved_path.write_text.assert_called_once_with(
+            token_json, encoding="utf-8"
+        )
+
+        # Verify Garmin class was initialized with empty/default credentials
+        mock_garmin_class.assert_called_once_with(email="", password="", is_cn=False)
+
+        # Verify login was called on the Garmin instance with resolved path
+        mock_garmin_instance.login.assert_called_once_with(str(mock_resolved_path))
 
 
 if __name__ == "__main__":
