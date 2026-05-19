@@ -41,12 +41,19 @@ class GarminClient:
                 "and configure GARMIN_TOKEN in your .env file."
             )
 
-        logger.info("Initializing Garmin Connect client using session token...")
+        token_raw = self.settings.garmin_token.get_secret_value()
+        try:
+            import json
+
+            token_dict = json.loads(token_raw)
+            logger.info(f"Loaded token format keys: {list(token_dict.keys())}")
+        except Exception as e:
+            logger.error(f"Loaded token is not a valid JSON structure: {e}")
 
         token_path = Path(self.settings.garmin_token_path).resolve()
         token_path.parent.mkdir(parents=True, exist_ok=True)
         token_path.write_text(
-            self.settings.garmin_token.get_secret_value(),
+            token_raw,
             encoding="utf-8",
         )
 
