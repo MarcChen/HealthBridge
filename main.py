@@ -139,12 +139,13 @@ def main():
             logger.error(f"  {loc}: {err['msg']} (input: {err.get('input')})")
         sys.exit(1)
 
-    # 2. Check if credentials exist
-    if not settings.has_credentials:
-        print("\n[!] Garmin Connect credentials are not configured!")
+    # 2. Check if token exists
+    if not settings.has_token:
+        print("\n[!] Garmin Connect token is not configured!")
         print("Please perform the following steps:")
-        print(" 1. Copy '.env.example' to '.env'")
-        print(" 2. Open '.env' and fill in your GARMIN_EMAIL and GARMIN_PASSWORD")
+        print(" 1. Run the token retriever script to log in and get your token:")
+        print("    PYTHONPATH=. uv run python scripts/get_garmin_token.py")
+        print(" 2. Save the token as GARMIN_TOKEN in your '.env' file or environment")
         print(" 3. Re-run this application\n")
         sys.exit(0)
 

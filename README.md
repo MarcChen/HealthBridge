@@ -68,18 +68,31 @@ make setup
 
 ### 3. Configuration
 
-Copy the configuration template and fill in your Garmin Connect credentials:
+HealthBridge uses token-only authentication to prevent storing credentials in plaintext and to support non-interactive runners (like GitHub Actions) cleanly without ongoing MFA prompts.
+
+You must run the token retriever script first to authenticate interactively and extract your token before running the main tool.
+
+#### Step 1: Initialize environment configuration
+Copy the configuration template to create your `.env` file:
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and configure your credentials:
+#### Step 2: Retrieve your Garmin token
+Run the interactive token retriever script. This script will prompt you for your Garmin email, password, and the MFA code sent to your phone/email:
+```bash
+PYTHONPATH=. uv run python scripts/get_garmin_token.py
+```
+
+At the end of the script, press `y` to automatically save the token to your local `.env` file as `GARMIN_TOKEN`. For security, the retriever script will automatically comment out any plaintext credentials if they are present in `.env`.
+
+Alternatively, you can manually copy the printed token JSON string and add it to your `.env` file:
 ```env
-GARMIN_EMAIL=your_email@example.com
-GARMIN_PASSWORD=your_secure_password
+GARMIN_TOKEN={"oauth_token": "...", "oauth_token_secret": "..."}
 GARMIN_IS_CN=False
 GARMIN_TOKEN_PATH=.garminconnect/garmin_tokens.json
 ```
+
 
 ---
 
@@ -118,7 +131,7 @@ PYTHONPATH=. uv run python main.py --demo
 ## 🤖 GitHub Automation
 
 ### 1. Syncing Secrets from `.env` to GitHub
-To secure your repository for GitHub Actions, a helper script automatically deploys the credentials configured in your local `.env` straight to your GitHub repository secrets:
+To secure your repository for GitHub Actions, a helper script automatically deploys the `GARMIN_TOKEN` and `GARMIN_IS_CN` variables configured in your local `.env` straight to your GitHub repository secrets:
 ```bash
 PYTHONPATH=. uv run python scripts/setup_secrets.py
 ```

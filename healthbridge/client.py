@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Callable
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -12,26 +11,12 @@ from healthbridge.models import WeightPayload
 logger = logging.getLogger(__name__)
 
 
-def default_mfa_prompt() -> str:
-    """Prompt the user for the Multi-Factor Authentication code via CLI."""
-    print("\n" + "=" * 50)
-    print(" Garmin Connect Multi-Factor Authentication Required ")
-    print("=" * 50)
-    code = input("Enter the MFA code sent to your email/phone: ").strip()
-    return code
-
-
 class GarminClient:
     """A high-level client wrapper around the Garmin Connect API."""
 
-    def __init__(
-        self,
-        settings: Settings | None = None,
-        mfa_prompt_func: Callable[[], str] = default_mfa_prompt,
-    ):
+    def __init__(self, settings: Settings | None = None):
         self.settings = settings or get_settings()
         self._client: Garmin | None = None
-        self._mfa_prompt = mfa_prompt_func
 
     @property
     def client(self) -> Garmin:
@@ -47,41 +32,35 @@ class GarminClient:
     def login(self) -> None:
         """Authenticate with Garmin Connect.
 
-        Uses cached tokens if available and valid; otherwise prompts for login/MFA
-        and caches the new session.
+        Loads the session token from configuration.
         """
-        if not self.settings.has_credentials:
+        if not self.settings.has_token:
             raise ValueError(
-                "Garmin Connect credentials are not set. "
-                "Please configure GARMIN_EMAIL and GARMIN_PASSWORD in your .env file."
+                "Garmin Connect token is not configured. "
+                "Please run 'python scripts/get_garmin_token.py' to generate a token, "
+                "and configure GARMIN_TOKEN in your .env file."
             )
 
-        email = self.settings.garmin_email
-        # Extract plain password from SecretStr
-        password = (
-            self.settings.garmin_password.get_secret_value()
-            if self.settings.garmin_password
-            else ""
-        )
+        logger.info("Initializing Garmin Connect client using session token...")
 
-        logger.info(f"Initializing Garmin Connect client for {email}...")
-
-        # Ensure token store directory exists
         token_path = Path(self.settings.garmin_token_path).resolve()
         token_path.parent.mkdir(parents=True, exist_ok=True)
+        token_path.write_text(
+            self.settings.garmin_token.get_secret_value(),
+            encoding="utf-8",
+        )
 
-        # Initialize the underlying client
+        # Initialize the underlying client with empty credentials
         self._client = Garmin(
-            email=email,
-            password=password,
+            email="",
+            password="",
             is_cn=self.settings.garmin_is_cn,
-            prompt_mfa=self._mfa_prompt,
         )
 
         try:
-            logger.info("Logging in and refreshing/loading tokens...")
+            logger.info("Logging in and loading tokens...")
             # We call login passing the tokenstore path as a positional argument.
-            # garminconnect will handle loading from / writing to this path.
+            # garminconnect will handle loading from this path.
             self._client.login(str(token_path))
             logger.info("Garmin Connect login successful.")
         except Exception as e:

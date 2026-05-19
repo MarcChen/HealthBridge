@@ -16,19 +16,14 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
+        populate_by_name=True,
     )
 
-    # Garmin Connect Credentials
-    garmin_email: str | None = Field(
+    # Garmin Connect Token configuration
+    garmin_token: SecretStr | None = Field(
         default=None,
-        description="The email address associated with your Garmin Connect account.",
-        validation_alias="GARMIN_EMAIL",
-    )
-
-    garmin_password: SecretStr | None = Field(
-        default=None,
-        description="The password associated with your Garmin Connect account.",
-        validation_alias="GARMIN_PASSWORD",
+        description="The Garmin Connect OAuth/session token JSON content.",
+        validation_alias="GARMIN_TOKEN",
     )
 
     garmin_is_cn: bool = Field(
@@ -44,9 +39,9 @@ class Settings(BaseSettings):
     )
 
     @property
-    def has_credentials(self) -> bool:
-        """Helper property to check if email and password are provided."""
-        return bool(self.garmin_email and self.garmin_password)
+    def has_token(self) -> bool:
+        """Helper property to check if a session token is provided."""
+        return bool(self.garmin_token)
 
 
 @lru_cache
